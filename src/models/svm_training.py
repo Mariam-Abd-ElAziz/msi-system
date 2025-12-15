@@ -77,14 +77,14 @@ def load_processed_data():
         with open(os.path.join(PROCESSED_DATA_DIR, 'features_info.json'), 'r') as f:
             features_info = json.load(f)
         
-        print(f"\n✅ Data loaded successfully!")
-        print(f"\n📊 Dataset Information:")
-        print(f"   Training set:   {X_train.shape[0]:>5} samples × {X_train.shape[1]:>5} features")
-        print(f"   Validation set: {X_val.shape[0]:>5} samples × {X_val.shape[1]:>5} features")
-        print(f"   Test set:       {X_test.shape[0]:>5} samples × {X_test.shape[1]:>5} features")
+        print(f"\n[OK] Data loaded successfully!")
+        print(f"\n[INFO] Dataset Information:")
+        print(f"   Training set:   {X_train.shape[0]:>5} samples x {X_train.shape[1]:>5} features")
+        print(f"   Validation set: {X_val.shape[0]:>5} samples x {X_val.shape[1]:>5} features")
+        print(f"   Test set:       {X_test.shape[0]:>5} samples x {X_test.shape[1]:>5} features")
         
         # Class distribution
-        print(f"\n📈 Training Set Class Distribution:")
+        print(f"\n[DISTRIBUTION] Training Set Class Distribution:")
         for class_id, class_name in enumerate(CLASS_NAMES):
             count = np.sum(y_train == class_id)
             percentage = (count / len(y_train)) * 100
@@ -95,7 +95,7 @@ def load_processed_data():
         return X_train, y_train, X_val, y_val, X_test, y_test, features_info
     
     except FileNotFoundError as e:
-        print(f"\n❌ Error: Could not find preprocessed data files!")
+        print(f"\n[ERROR] Error: Could not find preprocessed data files!")
         print(f"   Missing file: {e.filename}")
         print(f"   Please run Phase 2 (feature extraction) first.")
         return None, None, None, None, None, None, None
@@ -123,26 +123,26 @@ def tune_svm_hyperparameters(X_train, y_train, quick_mode=False):
     print("=" * 70)
     
     if quick_mode:
-        print("\n⚡ Quick Mode: Testing limited parameter combinations")
+        print("\n[FAST] Quick Mode: Testing limited parameter combinations")
         param_grid = {
             'C': [1, 10, 100],
             'gamma': ['scale', 0.001, 0.01],
             'kernel': ['rbf', 'poly']
         }
     else:
-        print("\n🔍 Full Mode: Comprehensive parameter search")
+        print("\n[FULL] Full Mode: Comprehensive parameter search")
         param_grid = {
             'C': [0.1, 1, 10, 50, 100],
             'gamma': ['scale', 'auto', 0.001, 0.01, 0.1],
             'kernel': ['rbf', 'poly', 'linear']
         }
     
-    print(f"\n📋 Parameter Grid:")
+    print(f"\n[PARAMS] Parameter Grid:")
     for param, values in param_grid.items():
         print(f"   {param:<10} {values}")
     
     total_combinations = np.prod([len(v) for v in param_grid.values()])
-    print(f"\n🔢 Total combinations to test: {total_combinations}")
+    print(f"\n[COUNT] Total combinations to test: {total_combinations}")
     print(f"   With 5-fold CV: {total_combinations * 5} model fits")
     
     # Estimate time
@@ -156,7 +156,7 @@ def tune_svm_hyperparameters(X_train, y_train, quick_mode=False):
     svm = SVC(probability=True, random_state=42, cache_size=1000)
     
     # GridSearchCV with cross-validation
-    print(f"\n🚀 Starting grid search...")
+    print(f"\n[START] Starting grid search...")
     start_time = time.time()
     
     # how to show every training in every parameter in every fold
@@ -174,16 +174,16 @@ def tune_svm_hyperparameters(X_train, y_train, quick_mode=False):
     
     elapsed_time = time.time() - start_time
     
-    print(f"\n✅ Grid search complete!")
+    print(f"\n[OK] Grid search complete!")
     print(f"   Time elapsed: {elapsed_time/60:.1f} minutes")
-    print(f"\n🏆 Best Parameters:")
+    print(f"\n[BEST] Best Parameters:")
     for param, value in grid_search.best_params_.items():
         print(f"   {param:<10} {value}")
     
-    print(f"\n📊 Best Cross-Validation Score: {grid_search.best_score_:.4f}")
+    print(f"\n[SCORE] Best Cross-Validation Score: {grid_search.best_score_:.4f}")
     
     # Show top 5 parameter combinations
-    print(f"\n🥇 Top 5 Parameter Combinations:")
+    print(f"\n[TOP] Top 5 Parameter Combinations:")
     results = grid_search.cv_results_
     indices = np.argsort(results['mean_test_score'])[::-1][:5]
     
@@ -191,7 +191,7 @@ def tune_svm_hyperparameters(X_train, y_train, quick_mode=False):
         params = results['params'][idx]
         score = results['mean_test_score'][idx]
         std = results['std_test_score'][idx]
-        print(f"   {i}. Score: {score:.4f} (±{std:.4f})")
+        print(f"   {i}. Score: {score:.4f} (+/- {std:.4f})")
         print(f"      Params: C={params['C']}, gamma={params['gamma']}, kernel={params['kernel']}")
     
     print("=" * 70)
@@ -203,7 +203,7 @@ def analyze_hyperparameter_impact(grid_search):
     """
     Visualize the impact of different hyperparameters
     """
-    print("\n📊 Creating hyperparameter impact visualizations...")
+    print("\n[ANALYSIS] Creating hyperparameter impact visualizations...")
     
     results = grid_search.cv_results_
     
@@ -253,7 +253,7 @@ def analyze_hyperparameter_impact(grid_search):
             
             plt.tight_layout()
             plt.savefig(os.path.join(RESULTS_DIR, 'hyperparameter_heatmap.png'), dpi=150)
-            print("   ✓ Saved: hyperparameter_heatmap.png")
+            print("   [OK] Saved: hyperparameter_heatmap.png")
             plt.close()
 
 
@@ -269,14 +269,14 @@ def train_final_svm(X_train, y_train, best_params):
     print("TRAINING FINAL SVM MODEL")
     print("=" * 70)
     
-    print(f"\n🔧 Configuration:")
+    print(f"\n[CONFIG] Configuration:")
     print(f"   Kernel:  {best_params['kernel']}")
     print(f"   C:       {best_params['C']}")
     print(f"   Gamma:   {best_params['gamma']}")
     print(f"   Probability: True (for confidence scores)")
     
     # Create and train SVM
-    print(f"\n🚀 Training SVM on full training set...")
+    print(f"\n[TRAINING] Training SVM on full training set...")
     start_time = time.time()
     
     svm_model = SVC(
@@ -293,7 +293,7 @@ def train_final_svm(X_train, y_train, best_params):
     
     elapsed_time = time.time() - start_time
     
-    print(f"✅ Training complete!")
+    print(f"[OK] Training complete!")
     print(f"   Time: {elapsed_time:.2f} seconds")
     print(f"   Support vectors: {svm_model.n_support_.sum()}")
     print(f"   Support vectors per class: {svm_model.n_support_}")
@@ -314,7 +314,7 @@ def predict_with_rejection(model, X, threshold=0.6):
     Args:
         model: Trained SVM model
         X: Feature array
-        threshold: Confidence threshold (predictions below this → unknown)
+        threshold: Confidence threshold (predictions below this -> unknown)
     
     Returns:
         predictions: Array of predicted classes (with unknown=6)
@@ -360,7 +360,7 @@ def find_optimal_threshold(model, X_val, y_val):
         'f1_weighted': []
     }
     
-    print(f"\n🔍 Testing {len(thresholds)} different thresholds...")
+    print(f"\n[SEARCH] Testing {len(thresholds)} different thresholds...")
     
     for threshold in tqdm(thresholds, desc="   Testing thresholds"):
         predictions, confidences = predict_with_rejection(model, X_val, threshold)
@@ -395,8 +395,8 @@ def find_optimal_threshold(model, X_val, y_val):
     optimal_idx = np.argmax(results['overall_accuracy'])
     optimal_threshold = results['threshold'][optimal_idx]
     
-    print(f"\n🎯 Optimal Threshold: {optimal_threshold:.2f}")
-    print(f"\n📊 Performance at Optimal Threshold:")
+    print(f"\n[TARGET] Optimal Threshold: {optimal_threshold:.2f}")
+    print(f"\n[PERF] Performance at Optimal Threshold:")
     print(f"   Overall Accuracy:   {results['overall_accuracy'][optimal_idx]:.4f}")
     print(f"   Known Accuracy:     {results['known_accuracy'][optimal_idx]:.4f}")
     print(f"   Unknown Recall:     {results['unknown_recall'][optimal_idx]:.4f}")
@@ -439,7 +439,7 @@ def find_optimal_threshold(model, X_val, y_val):
     
     plt.tight_layout()
     plt.savefig(os.path.join(RESULTS_DIR, 'threshold_analysis.png'), dpi=150)
-    print(f"\n💾 Saved threshold analysis to: results/threshold_analysis.png")
+    print(f"\n[SAVED] Saved threshold analysis to: results/threshold_analysis.png")
     plt.close()
     
     print("=" * 70)
@@ -465,11 +465,11 @@ def evaluate_model(model, X, y, threshold, dataset_name="Test"):
     # Overall metrics
     accuracy = accuracy_score(y, predictions)
     
-    print(f"\n📊 Overall Performance:")
+    print(f"\n[RESULTS] Overall Performance:")
     print(f"   Accuracy: {accuracy:.4f} ({accuracy*100:.2f}%)")
     
     # Per-class metrics
-    print(f"\n📈 Detailed Classification Report:")
+    print(f"\n[REPORT] Detailed Classification Report:")
     print(classification_report(y, predictions, target_names=CLASS_NAMES, digits=4))
     
     # Confusion matrix
@@ -486,7 +486,7 @@ def evaluate_model(model, X, y, threshold, dataset_name="Test"):
               fontweight='bold', fontsize=14)
     plt.tight_layout()
     plt.savefig(os.path.join(RESULTS_DIR, f'confusion_matrix_{dataset_name.lower()}.png'), dpi=150)
-    print(f"\n💾 Saved confusion matrix to: results/confusion_matrix_{dataset_name.lower()}.png")
+    print(f"\n[SAVED] Saved confusion matrix to: results/confusion_matrix_{dataset_name.lower()}.png")
     plt.close()
     
     # Confidence distribution
@@ -504,7 +504,7 @@ def evaluate_model(model, X, y, threshold, dataset_name="Test"):
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
     plt.savefig(os.path.join(RESULTS_DIR, f'confidence_distribution_{dataset_name.lower()}.png'), dpi=150)
-    print(f"💾 Saved confidence distribution to: results/confidence_distribution_{dataset_name.lower()}.png")
+    print(f"[SAVED] Saved confidence distribution to: results/confidence_distribution_{dataset_name.lower()}.png")
     plt.close()
     
     print("=" * 70)
@@ -528,7 +528,7 @@ def save_svm_model(model, threshold, best_params, results_summary):
     model_path = os.path.join(MODELS_DIR, 'svm_model.pkl')
     with open(model_path, 'wb') as f:
         pickle.dump(model, f)
-    print(f"\n💾 Model saved to: {model_path}")
+    print(f"\n[SAVED] Model saved to: {model_path}")
     
     # Save model configuration
     config = {
@@ -541,7 +541,7 @@ def save_svm_model(model, threshold, best_params, results_summary):
     config_path = os.path.join(MODELS_DIR, 'svm_config.json')
     with open(config_path, 'w') as f:
         json.dump(config, f, indent=2)
-    print(f"💾 Configuration saved to: {config_path}")
+    print(f"[SAVED] Configuration saved to: {config_path}")
     
     print("=" * 70)
 
@@ -557,9 +557,9 @@ def main(quick_mode=False):
     Args:
         quick_mode: If True, use faster but less thorough hyperparameter tuning
     """
-    print("\n" + "🤖 " * 25)
+    print("\n" + "[ML] " * 25)
     print("PHASE 3: SVM TRAINING & OPTIMIZATION")
-    print("🤖 " * 25 + "\n")
+    print("[ML] " * 25 + "\n")
     
     # Step 1: Load data
     X_train, y_train, X_val, y_val, X_test, y_test, features_info = load_processed_data()
@@ -568,7 +568,7 @@ def main(quick_mode=False):
         return
     
     # Step 2: Hyperparameter tuning
-    # print("\n" + "🎯" * 35)
+    # print("\n" + "[TARGET] " * 35)
     # best_params, grid_search = tune_svm_hyperparameters(X_train, y_train, quick_mode=quick_mode)
     # analyze_hyperparameter_impact(grid_search)
     best_params = {
@@ -611,35 +611,35 @@ def main(quick_mode=False):
     
     # Final summary
     print("\n" + "=" * 70)
-    print("PHASE 3 COMPLETE! ✨")
+    print("PHASE 3 COMPLETE!")
     print("=" * 70)
-    print(f"\n🏆 Final Results:")
+    print(f"\n[RESULTS] Final Results:")
     print(f"   Training Accuracy:   {train_acc:.4f} ({train_acc*100:.2f}%)")
     print(f"   Validation Accuracy: {val_acc:.4f} ({val_acc*100:.2f}%)")
     print(f"   Test Accuracy:       {test_acc:.4f} ({test_acc*100:.2f}%)")
     
     if train_acc - test_acc > 0.1:
-        print(f"\n⚠️  Warning: Possible overfitting detected!")
+        print(f"\n[WARNING] Warning: Possible overfitting detected!")
         print(f"   Train-Test gap: {(train_acc - test_acc)*100:.2f}%")
     else:
-        print(f"\n✅ Good generalization!")
+        print(f"\n[OK] Good generalization!")
         print(f"   Train-Test gap: {(train_acc - test_acc)*100:.2f}%")
     
     if test_acc >= 0.85:
-        print(f"\n🎉 SUCCESS! Test accuracy ≥ 85% target!")
+        print(f"\n[SUCCESS] SUCCESS! Test accuracy >= 85% target!")
     else:
-        print(f"\n⚠️  Test accuracy below 85% target.")
+        print(f"\n[WARNING] Test accuracy below 85% target.")
         print(f"   Consider: More data augmentation, feature tuning, or ensemble methods")
     
-    print(f"\n📁 All results saved to: {RESULTS_DIR}/")
-    print(f"📁 Model saved to: {MODELS_DIR}/")
+    print(f"\n[DIR] All results saved to: {RESULTS_DIR}/")
+    print(f"[DIR] Model saved to: {MODELS_DIR}/")
     
-    print("\n🎯 Next Steps:")
+    print(f"\n[NEXT] Next Steps:")
     print("   1. Review confusion matrix to identify problem classes")
     print("   2. Analyze misclassified examples")
     print("   3. Proceed to Phase 4: Real-time Deployment")
     
-    print("\n" + "🤖 " * 25 + "\n")
+    print("\n" + "[ML] " * 25 + "\n")
 
 
 if __name__ == "__main__":

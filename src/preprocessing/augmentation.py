@@ -55,7 +55,7 @@ def explore_dataset(data_dir):
         class_path = os.path.join(data_dir, class_name)
         
         if not os.path.exists(class_path):
-            print(f"⚠️  WARNING: Folder '{class_name}' not found!")
+            print(f"WARNING: Folder '{class_name}' not found!")
             continue
         
         # Count images
@@ -78,7 +78,7 @@ def explore_dataset(data_dir):
                 class_stats[class_name]['sample_size'] = (width, height)
     
     # Print statistics
-    print(f"\n📊 Dataset Statistics:")
+    print(f"[STATS] Dataset Statistics:")
     print(f"{'Class':<15} {'Count':<10} {'Percentage':<12} {'Sample Size'}")
     print("-" * 70)
     
@@ -100,15 +100,15 @@ def explore_dataset(data_dir):
         min_count = min(counts)
         imbalance_ratio = max_count / min_count if min_count > 0 else float('inf')
         
-        print(f"📈 Class Imbalance Analysis:")
+        print(f"[ANALYSIS] Class Imbalance Analysis:")
         print(f"   Max class size: {max_count}")
         print(f"   Min class size: {min_count}")
         print(f"   Imbalance ratio: {imbalance_ratio:.2f}x")
         
         if imbalance_ratio > 2:
-            print(f"   ⚠️  Significant imbalance detected! Augmentation needed.")
+            print(f"   Warning: Significant imbalance detected! Augmentation needed.")
         else:
-            print(f"   ✓ Classes are relatively balanced.")
+            print(f"   Classes are relatively balanced.")
     
     print("\n" + "=" * 70 + "\n")
     
@@ -220,7 +220,7 @@ def augment_class(class_name, original_images, original_dir, output_dir, target_
     current_count = len(original_images)
     needed = target_count - current_count
     
-    print(f"\n📦 Processing class: {class_name}")
+    print(f"[PROCESSING] Processing class: {class_name}")
     print(f"   Original: {current_count} images")
     print(f"   Target: {target_count} images")
     print(f"   Need to generate: {needed} images")
@@ -230,7 +230,7 @@ def augment_class(class_name, original_images, original_dir, output_dir, target_
     os.makedirs(class_output_dir, exist_ok=True)
     
     # Copy original images
-    print(f"   → Copying original images...")
+    print(f"   - Copying original images...")
     for img_name in original_images:
         src = os.path.join(original_dir, class_name, img_name)
         dst = os.path.join(class_output_dir, img_name)
@@ -238,7 +238,7 @@ def augment_class(class_name, original_images, original_dir, output_dir, target_
     
     # Generate augmented images
     if needed > 0:
-        print(f"   → Generating {needed} augmented images...")
+        print(f"   - Generating {needed} augmented images...")
         
         aug_count = 0
         with tqdm(total=needed, desc=f"   Augmenting {class_name}") as pbar:
@@ -267,7 +267,7 @@ def augment_class(class_name, original_images, original_dir, output_dir, target_
                 pbar.update(1)
     
     final_count = len(os.listdir(class_output_dir))
-    print(f"   ✓ Final count: {final_count} images")
+    print(f"   [OK] Final count: {final_count} images")
     
     return final_count
 
@@ -299,7 +299,7 @@ def generate_unknown_class(augmented_dir, target_count=400):
                      if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp'))]
             all_images.extend(images)
     
-    print(f"\n📊 Generating {target_count} unknown samples...")
+    print(f"\n[STATS] Generating {target_count} unknown samples...")
     print(f"   Strategy: Heavy blur + random transformations")
     
     with tqdm(total=target_count, desc="   Creating unknown samples") as pbar:
@@ -336,7 +336,7 @@ def generate_unknown_class(augmented_dir, target_count=400):
             pbar.update(1)
     
     final_count = len(os.listdir(unknown_dir))
-    print(f"\n   ✓ Generated {final_count} unknown samples")
+    print(f"\n   [OK] Generated {final_count} unknown samples")
     print("=" * 70 + "\n")
     
     return final_count
@@ -350,7 +350,7 @@ def visualize_samples(augmented_dir):
     """
     Display sample images from each class
     """
-    print("\n📸 Visualizing samples from each class...")
+    print("\n[INFO] Visualizing samples from each class...")
     
     all_classes = CLASS_NAMES + ['unknown']
     fig, axes = plt.subplots(2, 4, figsize=(16, 8))
@@ -380,7 +380,7 @@ def visualize_samples(augmented_dir):
     
     plt.tight_layout()
     plt.savefig('dataset_samples.png', dpi=150, bbox_inches='tight')
-    print("   ✓ Saved visualization to 'dataset_samples.png'")
+    print("   [OK] Saved visualization to 'dataset_samples.png'")
     plt.show()
 
 
@@ -388,7 +388,7 @@ def plot_class_distribution(augmented_dir):
     """
     Plot bar chart of class distribution
     """
-    print("\n📊 Creating class distribution chart...")
+    print("\n[CHART] Creating class distribution chart...")
     
     all_classes = CLASS_NAMES + ['unknown']
     counts = []
@@ -421,7 +421,7 @@ def plot_class_distribution(augmented_dir):
     
     plt.tight_layout()
     plt.savefig('class_distribution.png', dpi=150, bbox_inches='tight')
-    print("   ✓ Saved chart to 'class_distribution.png'")
+    print("   [OK] Saved chart to 'class_distribution.png'")
     plt.show()
 
 
@@ -433,15 +433,15 @@ def main():
     """
     Main execution pipeline
     """
-    print("\n" + "🚀 " * 25)
+    print("\n" + "=" * 25)
     print("PHASE 1: DATA PREPARATION & AUGMENTATION")
-    print("🚀 " * 25 + "\n")
+    print("=" * 25 + "\n")
     
     # Step 1: Explore original dataset
     class_stats, total_original = explore_dataset(ORIGINAL_DATA_DIR)
     
     if not class_stats:
-        print("❌ Error: No valid dataset found!")
+        print("[ERROR] Error: No valid dataset found!")
         return
     
     # Step 2: Create output directory
@@ -478,7 +478,7 @@ def main():
     total_augmented = sum(augmented_stats.values())
     increase_percentage = ((total_augmented - total_original) / total_original) * 100
     
-    print(f"\n📊 Final Dataset Statistics:")
+    print(f"\n[STATS] Final Dataset Statistics:")
     print(f"{'Class':<15} {'Original':<12} {'Augmented':<12} {'Increase'}")
     print("-" * 70)
     
@@ -494,9 +494,9 @@ def main():
           f"+{total_augmented - total_original} ({increase_percentage:.1f}%)")
     
     if increase_percentage >= 30:
-        print(f"\n✅ SUCCESS: Dataset increased by {increase_percentage:.1f}% (target: 30%)")
+        print(f"\n[SUCCESS] Dataset increased by {increase_percentage:.1f}% (target: 30%)")
     else:
-        print(f"\n⚠️  WARNING: Dataset only increased by {increase_percentage:.1f}% "
+        print(f"\n[WARNING] Dataset only increased by {increase_percentage:.1f}% "
               f"(target: 30%)")
     
     print("\n" + "=" * 70)

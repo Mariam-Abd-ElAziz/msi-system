@@ -210,93 +210,93 @@ def extract_features_from_dataset(data_dir):
     image_paths_list = []
     
     # Get first image to determine feature dimension
-    print("\n🔍 Analyzing feature dimensions...")
+    print("\nAnalyzing feature dimensions...")
     sample_found = False
     for class_name in CLASS_NAMES:
         class_dir = os.path.join(data_dir, class_name)
         if os.path.exists(class_dir):
-            images = [f for f in os.listdir(class_dir) 
+            images = [f for f in os.listdir(class_dir)
                      if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp'))]
             if images:
                 sample_img_path = os.path.join(class_dir, images[0])
                 sample_img = preprocess_image(sample_img_path)
                 if sample_img is not None:
                     sample_features = extract_combined_features(sample_img)
-                    
+
                     # Calculate individual feature dimensions
                     sample_hog = extract_hog_features(sample_img)
                     sample_color = extract_color_histogram_features(sample_img)
                     sample_lbp = extract_lbp_features(sample_img)
-                    
-                    print(f"\n📊 Feature Dimensions:")
+
+                    print(f"\nFeature Dimensions:")
                     print(f"   HOG features:           {len(sample_hog):>6} dimensions")
                     print(f"   Color Histogram:        {len(sample_color):>6} dimensions")
                     print(f"   LBP features:           {len(sample_lbp):>6} dimensions")
-                    print(f"   {'─' * 40}")
+                    print(f"   {'-' * 40}")
                     print(f"   TOTAL combined:         {len(sample_features):>6} dimensions")
                     sample_found = True
                     break
         if sample_found:
             break
-    
+
     if not sample_found:
-        print("❌ Error: No valid images found!")
+        print("Error: No valid images found!")
         return None, None, None
-    
+
     # Process all images
-    print(f"\n🔄 Extracting features from all images...")
-    
+    print(f"\nExtracting features from all images...")
+
     total_images = 0
     for class_name in CLASS_NAMES:
         class_dir = os.path.join(data_dir, class_name)
         if os.path.exists(class_dir):
-            images = [f for f in os.listdir(class_dir) 
+            images = [f for f in os.listdir(class_dir)
                      if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp'))]
             total_images += len(images)
-    
+
     with tqdm(total=total_images, desc="   Processing images") as pbar:
         for class_name in CLASS_NAMES:
             class_dir = os.path.join(data_dir, class_name)
-            
+
             if not os.path.exists(class_dir):
-                print(f"   ⚠️  Skipping {class_name} - folder not found")
+                print(f"   Warning: Skipping {class_name} - folder not found")
                 continue
-            
+
             class_id = CLASS_TO_ID[class_name]
-            
+
             # Get all images in class
-            images = [f for f in os.listdir(class_dir) 
+            images = [f for f in os.listdir(class_dir)
                      if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp'))]
-            
+
             # Process each image
             for img_name in images:
                 img_path = os.path.join(class_dir, img_name)
-                
+
                 # Preprocess image
                 img = preprocess_image(img_path)
-                
+
                 if img is None:
                     pbar.update(1)
                     continue
-                
+
                 # Extract features
                 try:
                     features = extract_combined_features(img)
-                    
+
                     features_list.append(features)
                     labels_list.append(class_id)
                     image_paths_list.append(img_path)
-                    
+
                 except Exception as e:
-                    print(f"\n   ⚠️  Failed to extract features from {img_name}: {e}")
-                
+                    print(f"\n   Warning: Failed to extract features from {img_name}: {e}")
+
                 pbar.update(1)
     
     # Convert to numpy arrays
     features = np.array(features_list)
     labels = np.array(labels_list)
     
-    print(f"\n✅ Feature extraction complete!")
+    print(f"\n[OK] Feature extraction complete!")
     print(f"   Total samples: {len(features)}")
     print(f"   Feature dimension: {features.shape[1]}")
     print(f"   Labels shape: {labels.shape}")
@@ -326,7 +326,7 @@ def normalize_features(features, scaler=None, save_scaler=True):
     print("=" * 70)
     
     if scaler is None:
-        print("\n🔧 Fitting new StandardScaler...")
+        print("\n[CONFIG] Fitting new StandardScaler...")
         scaler = StandardScaler()
         normalized_features = scaler.fit_transform(features)
         
@@ -338,17 +338,17 @@ def normalize_features(features, scaler=None, save_scaler=True):
             scaler_path = os.path.join(MODELS_DIR, 'feature_scaler.pkl')
             with open(scaler_path, 'wb') as f:
                 pickle.dump(scaler, f)
-            print(f"\n💾 Scaler saved to: {scaler_path}")
+            print(f"\n[SAVEDD] Scaler saved to: {scaler_path}")
     else:
-        print("\n🔧 Using existing StandardScaler...")
+        print("\n[CONFIG] Using existing StandardScaler...")
         normalized_features = scaler.transform(features)
     
     # Verify normalization
-    print(f"\n📊 Normalization Statistics:")
+    print(f"\n[STATS] Normalization Statistics:")
     print(f"   Original - Mean: {features.mean():.4f}, Std: {features.std():.4f}")
     print(f"   Normalized - Mean: {normalized_features.mean():.4f}, Std: {normalized_features.std():.4f}")
     
-    print("\n✅ Feature normalization complete!")
+    print("\n[OK] Feature normalization complete!")
     print("=" * 70)
     
     return normalized_features, scaler
@@ -397,15 +397,15 @@ def split_dataset(features, labels, image_paths, train_ratio=0.7, val_ratio=0.15
     )
     
     # Print split statistics
-    print(f"\n📊 Dataset Split:")
+    print(f"\n[SPLIT] Dataset Split:")
     print(f"   Training:   {len(X_train):>5} samples ({len(X_train)/len(features)*100:.1f}%)")
     print(f"   Validation: {len(X_val):>5} samples ({len(X_val)/len(features)*100:.1f}%)")
     print(f"   Test:       {len(X_test):>5} samples ({len(X_test)/len(features)*100:.1f}%)")
-    print(f"   {'─' * 50}")
+    print(f"   {'-' * 50}")
     print(f"   Total:      {len(features):>5} samples")
     
     # Print class distribution for each split
-    print(f"\n📈 Class Distribution:")
+    print(f"\n[DISTRIBUTION] Class Distribution:")
     print(f"   {'Class':<12} {'Train':<8} {'Val':<8} {'Test':<8}")
     print(f"   {'-' * 50}")
     
@@ -443,7 +443,7 @@ def save_processed_data(data_dict, features_info):
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     
     # Save features and labels
-    print("\n💾 Saving data files...")
+    print("\n[SAVING] Saving data files...")
     
     np.save(os.path.join(OUTPUT_DIR, 'X_train.npy'), data_dict['X_train'])
     np.save(os.path.join(OUTPUT_DIR, 'y_train.npy'), data_dict['y_train'])
@@ -464,16 +464,16 @@ def save_processed_data(data_dict, features_info):
     with open(os.path.join(OUTPUT_DIR, 'features_info.json'), 'w') as f:
         json.dump(features_info, f, indent=2)
     
-    print(f"   ✓ X_train.npy")
-    print(f"   ✓ y_train.npy")
-    print(f"   ✓ X_val.npy")
-    print(f"   ✓ y_val.npy")
-    print(f"   ✓ X_test.npy")
-    print(f"   ✓ y_test.npy")
-    print(f"   ✓ image_paths.pkl")
-    print(f"   ✓ features_info.json")
+    print(f"   [OK] X_train.npy")
+    print(f"   [OK] y_train.npy")
+    print(f"   [OK] X_val.npy")
+    print(f"   [OK] y_val.npy")
+    print(f"   [OK] X_test.npy")
+    print(f"   [OK] y_test.npy")
+    print(f"   [OK] image_paths.pkl")
+    print(f"   [OK] features_info.json")
     
-    print(f"\n📁 All files saved to: {OUTPUT_DIR}/")
+    print(f"\n[DIR] All files saved to: {OUTPUT_DIR}/")
     print("=" * 70)
 
 
@@ -481,7 +481,7 @@ def visualize_feature_samples(features, labels, n_samples=5):
     """
     Visualize feature distributions for sample images from each class
     """
-    print("\n📊 Creating feature visualization...")
+    print("\n[VIZ] Creating feature visualization...")
     
     fig, axes = plt.subplots(2, 4, figsize=(20, 10))
     axes = axes.flatten()
@@ -507,8 +507,11 @@ def visualize_feature_samples(features, labels, n_samples=5):
         axes[-1].axis('off')
     
     plt.tight_layout()
-    plt.savefig('feature_visualization.png', dpi=150, bbox_inches='tight')
-    print("   ✓ Saved to 'feature_visualization.png'")
+    # Ensure results directory exists
+    os.makedirs('results', exist_ok=True)
+    output_path = os.path.join('results', 'feature_visualization.png')
+    plt.savefig(output_path, dpi=150, bbox_inches='tight')
+    print(f"   [OK] Saved to '{output_path}'")
     plt.close()
 
 
@@ -520,15 +523,15 @@ def main():
     """
     Main execution pipeline for Phase 2
     """
-    print("\n" + "🎨 " * 25)
+    print("\n" + "=" * 25)
     print("PHASE 2: FEATURE EXTRACTION")
-    print("🎨 " * 25 + "\n")
+    print("=" * 25 + "\n")
     
     # Step 1: Extract features from all images
     features, labels, image_paths = extract_features_from_dataset(AUGMENTED_DATA_DIR)
     
     if features is None:
-        print("❌ Feature extraction failed!")
+        print("[ERROR] Feature extraction failed!")
         return
     
     # Step 2: Split dataset
@@ -572,21 +575,21 @@ def main():
     
     # Final summary
     print("\n" + "=" * 70)
-    print("PHASE 2 COMPLETE! ✨")
+    print("PHASE 2 COMPLETE!")
     print("=" * 70)
-    print("\n📋 Summary:")
-    print(f"   ✓ Extracted {features.shape[1]}-dimensional features")
-    print(f"   ✓ HOG + Color Histogram + LBP combined")
-    print(f"   ✓ Features normalized with StandardScaler")
-    print(f"   ✓ Dataset split: 70% train, 15% val, 15% test")
-    print(f"   ✓ All data saved to '{OUTPUT_DIR}/'")
-    print(f"   ✓ Scaler saved to '{MODELS_DIR}/'")
-    
-    print("\n🎯 Next Steps:")
-    print("   → Proceed to Phase 3: Model Training (SVM & k-NN)")
-    print("   → Use the saved .npy files for training")
-    
-    print("\n" + "🎨 " * 25 + "\n")
+    print("\nSummary:")
+    print(f"   Extracted {features.shape[1]}-dimensional features")
+    print(f"   HOG + Color Histogram + LBP combined")
+    print(f"   Features normalized with StandardScaler")
+    print(f"   Dataset split: 70% train, 15% val, 15% test")
+    print(f"   All data saved to '{OUTPUT_DIR}/'")
+    print(f"   Scaler saved to '{MODELS_DIR}/'")
+
+    print("\nNext Steps:")
+    print("   -> Proceed to Phase 3: Model Training (SVM & k-NN)")
+    print("   -> Use the saved .npy files for training")
+
+    print("\n" + "=" * 25 + "\n")
 
 
 if __name__ == "__main__":

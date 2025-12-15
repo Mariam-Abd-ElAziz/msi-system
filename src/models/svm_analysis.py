@@ -33,7 +33,7 @@ CLASS_NAMES = ['glass', 'paper', 'cardboard', 'plastic', 'metal', 'trash', 'unkn
 
 def load_model_and_data():
     """Load trained model, data, and configuration"""
-    print("📂 Loading model and data...")
+    print("[LOAD] Loading model and data...")
     
     # Load model
     with open(os.path.join(MODELS_DIR, 'svm_model.pkl'), 'rb') as f:
@@ -51,7 +51,7 @@ def load_model_and_data():
     with open(os.path.join(PROCESSED_DATA_DIR, 'image_paths.pkl'), 'rb') as f:
         paths_dict = pickle.load(f)
     
-    print("✅ Loaded successfully!\n")
+    print("[OK] Loaded successfully!\n")
     
     return model, config, X_test, y_test, paths_dict['test']
 
@@ -85,14 +85,14 @@ def analyze_misclassifications(model, X_test, y_test, test_paths, threshold):
     total_samples = len(y_test)
     error_rate = (num_misclassified / total_samples) * 100
     
-    print(f"\n📊 Overall Statistics:")
+    print(f"\n[STATS] Overall Statistics:")
     print(f"   Total test samples: {total_samples}")
     print(f"   Misclassified: {num_misclassified}")
     print(f"   Error rate: {error_rate:.2f}%")
     print(f"   Accuracy: {100 - error_rate:.2f}%")
     
     # Analyze confusion patterns
-    print(f"\n🔍 Most Common Confusion Patterns:")
+    print(f"\n[ANALYSIS] Most Common Confusion Patterns:")
     confusion_pairs = {}
     
     for idx in misclassified_indices:
@@ -106,13 +106,13 @@ def analyze_misclassifications(model, X_test, y_test, test_paths, threshold):
     
     for i, ((true_name, pred_name), count) in enumerate(sorted_pairs[:10], 1):
         percentage = (count / num_misclassified) * 100
-        print(f"   {i:2d}. {true_name:>10} → {pred_name:<10} : {count:>3} times ({percentage:>5.1f}%)")
+        print(f"   {i:2d}. {true_name:>10} -> {pred_name:<10} : {count:>3} times ({percentage:>5.1f}%)")
     
     # Confidence analysis of misclassifications
     misclassified_confidences = max_probs[misclassified_mask]
     correctly_classified_confidences = max_probs[~misclassified_mask]
     
-    print(f"\n📈 Confidence Analysis:")
+    print(f"\n[ANALYSIS] Confidence Analysis:")
     print(f"   Misclassified samples:")
     print(f"      Mean confidence: {misclassified_confidences.mean():.4f}")
     print(f"      Median confidence: {np.median(misclassified_confidences):.4f}")
@@ -131,7 +131,7 @@ def visualize_misclassified_examples(misclassified_indices, y_test, predictions,
     """
     Visualize misclassified examples
     """
-    print(f"\n🖼️  Creating visualization of {num_examples} misclassified examples...")
+    print(f"\n[VIZ] Creating visualization of {num_examples} misclassified examples...")
     
     # Select random misclassified samples
     if len(misclassified_indices) > num_examples:
@@ -179,7 +179,7 @@ def visualize_misclassified_examples(misclassified_indices, y_test, predictions,
     plt.suptitle('Misclassified Examples', fontsize=16, fontweight='bold')
     plt.tight_layout()
     plt.savefig(os.path.join(RESULTS_DIR, 'misclassified_examples.png'), dpi=150)
-    print(f"   ✓ Saved to: results/misclassified_examples.png")
+    print(f"   [OK] Saved to: results/misclassified_examples.png")
     plt.close()
 
 
@@ -237,22 +237,22 @@ def analyze_per_class_performance(model, X_test, y_test, threshold):
     print("-" * 70)
     
     # Identify problem classes
-    print(f"\n⚠️  Problem Classes (accuracy < 80%):")
+    print(f"\n[WARNING] Problem Classes (accuracy < 80%):")
     problem_classes = [c for c in class_stats if c['accuracy'] < 0.80]
     
     if problem_classes:
         for cls in problem_classes:
-            print(f"   • {cls['name']:<12} {cls['accuracy']*100:.2f}% "
+            print(f"   - {cls['name']:<12} {cls['accuracy']*100:.2f}% "
                   f"(avg confidence: {cls['avg_conf']:.4f})")
     else:
-        print(f"   ✅ All classes performing well (≥80% accuracy)!")
+        print(f"   [OK] All classes performing well (>=80% accuracy)!")
     
     # Identify best classes
-    print(f"\n✅ Best Performing Classes (accuracy ≥ 90%):")
+    print(f"\n[OK] Best Performing Classes (accuracy >= 90%):")
     best_classes = [c for c in class_stats if c['accuracy'] >= 0.90]
     
     for cls in best_classes:
-        print(f"   • {cls['name']:<12} {cls['accuracy']*100:.2f}% "
+        print(f"   - {cls['name']:<12} {cls['accuracy']*100:.2f}% "
               f"(avg confidence: {cls['avg_conf']:.4f})")
 
 
@@ -347,7 +347,7 @@ def suggest_improvements(model, X_test, y_test, predictions, threshold):
     
     # Print suggestions
     if not suggestions:
-        print("\n🎉 Great! No major issues detected.")
+        print("\n[SUCCESS] Great! No major issues detected.")
         print("   Your model is performing well!")
     else:
         # Sort by priority
@@ -355,12 +355,12 @@ def suggest_improvements(model, X_test, y_test, predictions, threshold):
         suggestions.sort(key=lambda x: priority_order[x['priority']])
         
         for i, suggestion in enumerate(suggestions, 1):
-            priority_color = '🔴' if suggestion['priority'] == 'HIGH' else '🟡'
+            priority_color = '[HIGH]' if suggestion['priority'] == 'HIGH' else '[MED]'
             print(f"\n{priority_color} Suggestion #{i} [{suggestion['priority']} PRIORITY]")
             print(f"   Issue: {suggestion['issue']}")
             print(f"   Possible solutions:")
             for sol in suggestion['solutions']:
-                print(f"      • {sol}")
+                print(f"      - {sol}")
     
     print("\n" + "=" * 70)
 
@@ -373,16 +373,16 @@ def main():
     """
     Run complete performance analysis
     """
-    print("\n" + "📊 " * 25)
+    print("\n" + "[ANALYSIS] " * 25)
     print("SVM PERFORMANCE ANALYSIS")
-    print("📊 " * 25 + "\n")
+    print("[ANALYSIS] " * 25 + "\n")
     
     try:
         # Load model and data
         model, config, X_test, y_test, test_paths = load_model_and_data()
         threshold = config['optimal_threshold']
         
-        print(f"📋 Model Configuration:")
+        print(f"[CONFIG] Model Configuration:")
         print(f"   Kernel: {config['best_params']['kernel']}")
         print(f"   C: {config['best_params']['C']}")
         print(f"   Gamma: {config['best_params']['gamma']}")
@@ -408,15 +408,15 @@ def main():
         # Improvement suggestions
         suggest_improvements(model, X_test, y_test, predictions, threshold)
         
-        print("\n✨ Analysis complete!")
-        print(f"📁 Check the '{RESULTS_DIR}' folder for visualizations.")
+        print("\n[OK] Analysis complete!")
+        print(f"[DIR] Check the '{RESULTS_DIR}' folder for visualizations.")
         
     except FileNotFoundError as e:
-        print(f"\n❌ Error: Could not find required files!")
+        print(f"\n[ERROR] Error: Could not find required files!")
         print(f"   Make sure you've run Phase 3 (SVM training) first.")
         print(f"   Missing: {e}")
     
-    print("\n" + "📊 " * 25 + "\n")
+    print("\n" + "[ANALYSIS] " * 25 + "\n")
 
 
 if __name__ == "__main__":

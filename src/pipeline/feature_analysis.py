@@ -177,10 +177,10 @@ def visualize_single_image_features(image_path):
     
     # Plot texture intensity
     ax12 = plt.subplot(3, 4, 12)
-    ax12.imshow(lbp, cmap='viridis')
+    im = ax12.imshow(lbp, cmap='viridis')
     ax12.set_title('LBP Texture Map\n(Color-coded)', fontweight='bold', fontsize=12)
     ax12.axis('off')
-    plt.colorbar(ax12.imshow(lbp, cmap='viridis'), ax=ax12, fraction=0.046)
+    plt.colorbar(im, ax=ax12, fraction=0.046)
     
     # ========================================================================
     # FINAL FORMATTING
@@ -190,9 +190,11 @@ def visualize_single_image_features(image_path):
     plt.tight_layout()
     
     # Save
+    os.makedirs('results', exist_ok=True)
     output_name = f"feature_breakdown_{os.path.basename(image_path)}"
-    plt.savefig(output_name, dpi=150, bbox_inches='tight')
-    print(f"✓ Saved visualization to: {output_name}")
+    output_path = os.path.join('results', output_name)
+    plt.savefig(output_path, dpi=150, bbox_inches='tight')
+    print(f"[OK] Saved visualization to: {output_path}")
     
     plt.show()
 
@@ -268,8 +270,10 @@ def compare_features_across_classes():
     plt.suptitle('Feature Comparison Across Material Classes', 
                  fontsize=16, fontweight='bold')
     plt.tight_layout()
-    plt.savefig('feature_comparison_classes.png', dpi=150, bbox_inches='tight')
-    print("✓ Saved comparison to: feature_comparison_classes.png")
+    os.makedirs('results', exist_ok=True)
+    output_path = os.path.join('results', 'feature_comparison_classes.png')
+    plt.savefig(output_path, dpi=150, bbox_inches='tight')
+    print(f"[OK] Saved comparison to: {output_path}")
     plt.show()
 
 
@@ -299,7 +303,7 @@ def analyze_feature_dimensions():
     
     total = len(hog_feat) + color_feat + lbp_feat
     
-    print(f"\n📊 Feature Breakdown:")
+    print(f"\n[FEATURES] Feature Breakdown:")
     print(f"\n1. HOG Features:")
     print(f"   - Orientations: {HOG_ORIENTATIONS}")
     print(f"   - Pixels per cell: {HOG_PIXELS_PER_CELL}")
@@ -321,15 +325,15 @@ def analyze_feature_dimensions():
     print(f"   - Total LBP features: {lbp_feat}")
     print(f"   - Purpose: Captures texture information")
     
-    print(f"\n{'═' * 70}")
+    print(f"\n{'=' * 70}")
     print(f"TOTAL COMBINED FEATURES: {total} dimensions")
-    print(f"{'═' * 70}")
+    print(f"{'=' * 70}")
     
-    print(f"\n💡 Why this combination works:")
-    print(f"   ✓ HOG captures SHAPE (edges, contours)")
-    print(f"   ✓ Color Histogram captures COLOR (material appearance)")
-    print(f"   ✓ LBP captures TEXTURE (surface patterns)")
-    print(f"   → Together they describe materials comprehensively!")
+    print(f"\n[TIP] Why this combination works:")
+    print(f"   [OK] HOG captures SHAPE (edges, contours)")
+    print(f"   [OK] Color Histogram captures COLOR (material appearance)")
+    print(f"   [OK] LBP captures TEXTURE (surface patterns)")
+    print(f"   => Together they describe materials comprehensively!")
     
     print("\n" + "=" * 70 + "\n")
 
@@ -342,15 +346,15 @@ def main():
     """
     Interactive feature analysis
     """
-    print("\n" + "🔬 " * 25)
+    print("\n" + "[FEATURE] " * 25)
     print("FEATURE ANALYSIS HELPER")
-    print("🔬 " * 25 + "\n")
+    print("[FEATURE] " * 25 + "\n")
     
     # Analyze dimensions
     analyze_feature_dimensions()
     
     # Find a sample image
-    print("🔍 Finding sample images for visualization...\n")
+    print("[SEARCH] Finding sample images for visualization...\n")
     
     sample_images = []
     class_names = ['glass', 'paper', 'cardboard', 'plastic', 'metal', 'trash']
@@ -374,18 +378,18 @@ def main():
         choice = input("Enter choice (1/2/3) [default: 3]: ").strip() or "3"
         
         if choice in ["1", "3"]:
-            print(f"\n📸 Analyzing detailed features for: {sample_images[0][0]}")
+            print(f"\n[VIZ] Analyzing detailed features for: {sample_images[0][0]}")
             visualize_single_image_features(sample_images[0][1])
         
         if choice in ["2", "3"]:
-            print(f"\n📊 Comparing features across classes...")
+            print(f"\n[ANALYSIS] Comparing features across classes...")
             compare_features_across_classes()
         
-        print("\n✨ Analysis complete! Check the generated images.")
+        print("\n[SUCCESS] Analysis complete! Check the generated images.")
     else:
-        print("❌ No sample images found. Make sure to run Phase 1 first!")
+        print("[ERROR] No sample images found. Make sure to run Phase 1 first!")
     
-    print("\n" + "🔬 " * 25 + "\n")
+    print("\n" + "[ANALYSIS] " * 25 + "\n")
 
 
 if __name__ == "__main__":
