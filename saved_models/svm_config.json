@@ -1,0 +1,18 @@
+{
+  "best_params": {
+    "C": 10,
+    "gamma": "auto",
+    "kernel": "rbf"
+  },
+  "optimal_threshold": 0.3,
+  "feature_dimension": 2048,
+  "class_names": [
+    "glass",
+    "paper",
+    "cardboard",
+    "plastic",
+    "metal",
+    "trash",
+    "unknown"
+  ]
+}

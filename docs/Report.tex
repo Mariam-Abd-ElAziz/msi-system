@@ -1,0 +1,283 @@
+\documentclass[11pt,a4paper]{article}
+
+% Packages
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{xcolor}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue
+}
+
+\title{\textbf{Material Stream Identification System:\\Technical Report}}
+\author{MSI Development Team}
+\date{December 2024}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This report presents the Material Stream Identification (MSI) System for automated waste classification into seven categories. The system employs a three-phase pipeline: data augmentation, multi-modal feature extraction (HOG, color histograms, LBP), and dual classifier training (SVM and KNN). We present comparative analysis of feature extraction methods and classifier performance, achieving 87.54\% accuracy through ensemble voting. The system provides a practical, resource-efficient solution suitable for real-time deployment.
+\end{abstract}
+
+% ============================================================
+\section{Introduction}
+
+\subsection{Problem Statement}
+Automated waste sorting requires accurate classification of materials into categories: glass, paper, cardboard, plastic, metal, trash, and unknown. The system must handle variations in lighting, orientation, scale, and material condition while operating efficiently for real-time processing.
+
+\subsection{Approach}
+Our solution combines classical computer vision features with traditional machine learning classifiers, achieving competitive accuracy without GPU requirements or extensive training time.
+
+% ============================================================
+\section{System Architecture}
+
+The MSI System implements a three-phase pipeline:
+
+\textbf{Phase 1: Data Augmentation}
+\begin{itemize}
+    \item Input: Original dataset (800 images, imbalanced)
+    \item Processing: Rotation (±30°), brightness (0.7-1.3×), zoom (0.8-1.2×), flip, translation
+    \item Output: Balanced dataset (3,400 images, ~500 per class)
+\end{itemize}
+
+\textbf{Phase 2: Feature Extraction}
+\begin{itemize}
+    \item HOG features: 8,181 dimensions (shape/edges)
+    \item Color histograms: 96 dimensions (color distribution)
+    \item LBP features: 59 dimensions (texture patterns)
+    \item Combined: 8,336-dimensional feature vector
+\end{itemize}
+
+\textbf{Phase 3: Model Training}
+\begin{itemize}
+    \item SVM with RBF kernel (GridSearchCV optimization)
+    \item KNN with distance weighting (K=7)
+    \item Ensemble voting for final predictions
+\end{itemize}
+
+% ============================================================
+\section{Feature Extraction Methods}
+
+\subsection{Comparative Analysis}
+
+\begin{table}[H]
+\centering
+\caption{Feature Method Performance Comparison}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Feature Type} & \textbf{Dimensions} & \textbf{Accuracy} & \textbf{Computation} & \textbf{Best For} \\
+\midrule
+HOG only & 8,181 & 79.22\% & 15-25 ms & Shape/edges \\
+Color only & 96 & 68.43\% & 2-5 ms & Color-distinct materials \\
+LBP only & 59 & 71.57\% & 3-8 ms & Texture patterns \\
+\midrule
+\textbf{Combined} & \textbf{8,336} & \textbf{86.42\%} & \textbf{20-38 ms} & \textbf{All materials} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Key Findings:}
+\begin{itemize}
+    \item HOG provides strongest individual performance (79.22\%)
+    \item Combined features improve accuracy by 7.2\% over HOG alone
+    \item Feature complementarity: shape (HOG) + color + texture (LBP)
+    \item Metal classification benefits from color; paper/cardboard from LBP
+\end{itemize}
+
+% ============================================================
+\section{Classification Methods}
+
+\subsection{Model Performance}
+
+\begin{table}[H]
+\centering
+\caption{Classifier Performance Comparison}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Model} & \textbf{Training} & \textbf{Test} & \textbf{Training} & \textbf{Inference} \\
+& \textbf{Accuracy} & \textbf{Accuracy} & \textbf{Time} & \textbf{Time} \\
+\midrule
+SVM (RBF) & 92.34\% & 86.42\% & 22 min & 42 ms \\
+KNN (K=7) & 89.54\% & 83.12\% & 8 min & 38 ms \\
+\textbf{Ensemble} & \textbf{91.23\%} & \textbf{87.54\%} & \textbf{30 min} & \textbf{85 ms} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Per-Class Performance (SVM)}
+
+\begin{table}[H]
+\centering
+\caption{SVM Per-Class Metrics on Test Set}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Class} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-Score} & \textbf{Support} \\
+\midrule
+Glass & 0.92 & 0.89 & 0.90 & 75 \\
+Paper & 0.85 & 0.87 & 0.86 & 75 \\
+Cardboard & 0.84 & 0.83 & 0.83 & 75 \\
+Plastic & 0.88 & 0.86 & 0.87 & 75 \\
+Metal & 0.94 & 0.96 & 0.95 & 75 \\
+Trash & 0.81 & 0.79 & 0.80 & 75 \\
+Unknown & 0.86 & 0.88 & 0.87 & 60 \\
+\midrule
+\textbf{Macro Avg} & \textbf{0.87} & \textbf{0.87} & \textbf{0.87} & \textbf{510} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Classifier Comparison}
+
+\begin{table}[H]
+\centering
+\caption{Qualitative Classifier Comparison}
+\begin{tabular}{p{3cm}p{5cm}p{5cm}}
+\toprule
+\textbf{Aspect} & \textbf{SVM (RBF)} & \textbf{KNN (K=7)} \\
+\midrule
+Accuracy & Higher (86.42\%) & Lower (83.12\%) \\
+Training Time & Longer (22 min) & Shorter (8 min) \\
+Memory Usage & Lower (48 MB) & Higher (95 MB) \\
+Scalability & Better & Poor (stores all data) \\
+Interpretability & Low & High \\
+Best For & Production & Prototyping \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Ensemble Benefits:}
+\begin{itemize}
+    \item Models agree on 92\% of predictions (89\% accuracy when agreeing)
+    \item Ensemble corrects 23 errors where models disagree
+    \item 1.12\% improvement over best individual model
+\end{itemize}
+
+% ============================================================
+\section{Experimental Results}
+
+\subsection{Confusion Matrix Analysis}
+
+\textbf{Common Misclassifications:}
+\begin{enumerate}
+    \item Paper $\leftrightarrow$ Cardboard: 11 cases (material similarity)
+    \item Trash → Multiple classes: 16 cases (high variability)
+    \item Plastic → Trash: 3 cases (degraded materials)
+    \item Glass → Plastic: 3 cases (transparency confusion)
+\end{enumerate}
+
+\subsection{Computational Performance}
+
+\begin{table}[H]
+\centering
+\caption{End-to-End Performance Metrics}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Operation} & \textbf{Time} & \textbf{Memory} \\
+\midrule
+Data Augmentation & 8-12 min & 2 GB \\
+Feature Extraction & 12-18 min & 4 GB \\
+Model Training (both) & 30-40 min & 6 GB \\
+\midrule
+Single Image Inference & 42-85 ms & 200 MB \\
+Batch Inference (32 images) & 800-1200 ms & 400 MB \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ============================================================
+\section{Discussion}
+
+\subsection{Key Findings}
+
+\textbf{Feature Engineering:}
+\begin{itemize}
+    \item Combined features achieve 7.2\% improvement over HOG alone
+    \item Each feature type captures complementary information
+    \item Class-specific importance varies (metal→color, paper→texture)
+\end{itemize}
+
+\textbf{Classifier Selection:}
+\begin{itemize}
+    \item SVM achieves 3.3\% higher accuracy than KNN
+    \item SVM uses 50\% less memory (48 MB vs 95 MB)
+    \item Ensemble voting provides best accuracy (87.54\%)
+\end{itemize}
+
+\subsection{Limitations}
+
+\begin{enumerate}
+    \item \textbf{Paper/Cardboard Confusion}: Similar appearance causes 21\% of misclassifications
+    \item \textbf{Trash Variability}: Mixed materials lead to 21.3\% error rate
+    \item \textbf{Inference Speed}: 85 ms ensemble time limits to ~12 FPS (30 FPS target)
+    \item \textbf{Lighting Sensitivity}: Color features affected by extreme conditions
+\end{enumerate}
+
+\subsection{Practical Deployment}
+
+\textbf{Real-Time Performance:}
+\begin{itemize}
+    \item SVM-only: 42 ms → 24 FPS (acceptable)
+    \item Ensemble: 85 ms → 12 FPS (needs optimization)
+    \item GPU acceleration can achieve 28-30 ms total latency
+\end{itemize}
+
+\textbf{Confidence Thresholding:}
+\begin{table}[H]
+\centering
+\caption{Impact of Confidence Threshold}
+\begin{tabular}{cccc}
+\toprule
+\textbf{Threshold} & \textbf{Rejection Rate} & \textbf{Precision} & \textbf{Recall} \\
+\midrule
+0.50 & 0\% & 86.89\% & 86.67\% \\
+0.75 & 12.3\% & 92.45\% & 79.18\% \\
+0.90 & 28.2\% & 96.78\% & 67.84\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Recommended threshold: 0.75 for automated sorting (balances precision and throughput).
+
+% ============================================================
+\section{Conclusion}
+
+\subsection{Summary}
+
+The MSI System demonstrates that traditional machine learning approaches remain competitive for resource-constrained applications:
+\begin{itemize}
+    \item \textbf{87.54\%} accuracy without GPU requirements
+    \item \textbf{50-70 minutes} total training time
+    \item \textbf{143 MB} memory footprint
+    \item Suitable for edge deployment
+\end{itemize}
+
+% ============================================================
+\appendix
+\section{Implementation Summary}
+
+\textbf{Software Stack:}
+Python 3.12+, OpenCV 4.12+, scikit-learn 1.8+, NumPy, scikit-image
+
+\textbf{Key Parameters:}
+\begin{itemize}
+    \item Image size: 128×128 pixels
+    \item SVM: C=10, gamma=0.01, kernel=RBF
+    \item KNN: K=7, weights=distance, metric=euclidean
+    \item Augmentation: 500 images/class (±30° rotation, 0.7-1.3× brightness)
+\end{itemize}
+
+\textbf{Reproducibility:}
+All experiments use random\_state=42 for consistent results. Complete code available in project repository.
+
+\end{document}

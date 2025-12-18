@@ -10,3 +10,11 @@ data/features/
 saved_models/*.pkl
 .ipynb_checkpoints/
 .DS_Store
+
+dataset/
+mlvenv/
+dataset.zip
+
+.venv/
+
+data/test_images/
