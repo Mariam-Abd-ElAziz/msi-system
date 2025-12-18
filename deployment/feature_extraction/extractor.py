@@ -1,61 +1,78 @@
-# wrapper/adapter code for the feature extraction module
-import sys
 import os
 import pickle
 import cv2
 import numpy as np
+import torch
+import torch.nn as nn
+from torchvision import models, transforms
 
-# Add src directory to Python path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
-
-# Import feature extraction functions
-from src.preprocessing.feature_extractor import extract_combined_features, IMAGE_SIZE
+from src.preprocessing.feature_extractor import IMAGE_SIZE
 
 class FeatureExtractor:
     def __init__(self):
-        # Calculate the correct path to saved_models directory (works from any directory)
+        # Resolve project paths
         script_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.join(script_dir, '..', '..')
-        # Load the feature scaler for normalization
+
+        # Device
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        # -------------------------------
+        # Load trained CNN backbone
+        # -------------------------------
+        model_path = os.path.join(project_root, 'saved_models', 'cnn_feature_extractor.pth')
+
+        model = models.resnet50(pretrained=False)
+        model.fc = nn.Identity()  # remove classifier
+
+        state = torch.load(model_path, map_location=self.device)
+        model.load_state_dict(state, strict=False)
+
+        self.model = model.to(self.device)
+        self.model.eval()
+
+        # -------------------------------
+        # Load feature scaler
+        # -------------------------------
         scaler_path = os.path.join(project_root, 'saved_models', 'feature_scaler.pkl')
         with open(scaler_path, 'rb') as f:
             self.scaler = pickle.load(f)
 
-    def extract(self, frame):
-        # Validate frame data
-        if frame is None:
-            print("Warning: Frame is None")
-            return np.zeros(8255)
-        
-        if frame.size == 0:
-            print("Warning: Frame is empty")
-            return np.zeros(8255)
-        
-        # Check frame properties
-        if len(frame.shape) != 3 or frame.shape[2] != 3:
-            print(f"Warning: Invalid frame shape: {frame.shape}")
-            return np.zeros(8255)
-        
-        # Ensure frame is valid image data
-        if frame.dtype != np.uint8:
-            frame = frame.astype(np.uint8)
-        
-        # Basic data validation
-        if np.any(frame < 0) or np.any(frame > 255):
-            print("Warning: Frame has invalid pixel values")
-            frame = np.clip(frame, 0, 255).astype(np.uint8)
-        
-        # Resize frame to the expected input size
-        resized_frame = cv2.resize(frame, IMAGE_SIZE)
-        
-        try:
-            # Extract features
-            features = extract_combined_features(resized_frame)
-            
-            # Normalize features using the scaler
-            normalized_features = self.scaler.transform([features])[0]
-            
-            return normalized_features
-        except Exception as e:
-            print(f"Feature extraction error: {e}")
-            return np.zeros(8255)
+        # -------------------------------
+        # Image preprocessing
+        # -------------------------------
+        self.transform = transforms.Compose([
+            transforms.ToPILImage(),
+            transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),
+            transforms.ToTensor(),
+            transforms.Normalize(
+                mean=[0.485, 0.456, 0.406],
+                std=[0.229, 0.224, 0.225]
+            )
+        ])
+
+    def extract(self, frame: np.ndarray) -> np.ndarray:
+        """Extract a 2048-dim CNN feature vector from a single frame."""
+
+        if frame is None or frame.size == 0:
+            return np.zeros(2048)
+
+        if frame.ndim != 3 or frame.shape[2] != 3:
+            return np.zeros(2048)
+
+        # Ensure uint8
+        frame = np.clip(frame, 0, 255).astype(np.uint8)
+
+        # Preprocess
+        img = self.transform(frame).unsqueeze(0).to(self.device)
+
+        # Extract features
+        with torch.no_grad():
+            features = self.model(img)
+
+        features = features.cpu().numpy().reshape(1, -1)
+
+        # Normalize with training scaler
+        features = self.scaler.transform(features)
+
+        return features.flatten()
