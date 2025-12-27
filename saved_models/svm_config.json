@@ -5,13 +5,18 @@
     "kernel": "rbf"
   },
   "optimal_threshold": 0.3,
-  "feature_dimension": 2048,
+  "results": {
+    "train_accuracy": 0.9993284083277367,
+    "val_accuracy": 0.8404255319148937,
+    "feature_dimension": 2048,
+    "training_samples": 1489
+  },
   "class_names": [
-    "glass",
-    "paper",
     "cardboard",
-    "plastic",
+    "glass",
     "metal",
+    "paper",
+    "plastic",
     "trash",
     "unknown"
   ]
