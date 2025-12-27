@@ -19,4 +19,4 @@ dataset.zip
 
 data/test_images/
 
-saved_models\cnn_feature_extractor.pth
+saved_models/cnn_feature_extractor.pth
