@@ -19,4 +19,4 @@ dataset.zip
 
 data/test_images/
 
-/src/pipeline.ipynb
+saved_models\cnn_feature_extractor.pth
