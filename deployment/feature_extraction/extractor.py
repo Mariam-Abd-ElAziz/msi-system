@@ -5,74 +5,69 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torchvision import models, transforms
+from pathlib import Path
 
-from src.preprocessing.feature_extractor import IMAGE_SIZE
+# Define constant here or import from config
+IMAGE_SIZE = 128
 
 class FeatureExtractor:
     def __init__(self):
-        # Resolve project paths
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        project_root = os.path.join(script_dir, '..', '..')
+        # Resolve project paths using Pathlib
+        self.script_dir = Path(__file__).resolve().parent
+        self.project_root = self.script_dir.parent.parent # adjust .parent depth based on your folder structure
+        
+        # Paths to artifacts
+        self.model_path = self.project_root / 'saved_models' / 'cnn_feature_extractor.pth'
+        self.scaler_path = self.project_root / 'saved_models' / 'feature_scaler.pkl'
 
-        # Device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        print(f"[Extractor] Using device: {self.device}")
 
-        # -------------------------------
-        # Load trained CNN backbone
-        # -------------------------------
-        model_path = os.path.join(project_root, 'saved_models', 'cnn_feature_extractor.pth')
-
+        # 1. Load CNN Backbone
+        if not self.model_path.exists():
+            raise FileNotFoundError(f"Model not found at {self.model_path}")
+            
         model = models.resnet50(pretrained=False)
-        model.fc = nn.Identity()  # remove classifier
-
-        state = torch.load(model_path, map_location=self.device)
+        model.fc = nn.Identity()
+        
+        state = torch.load(self.model_path, map_location=self.device)
         model.load_state_dict(state, strict=False)
-
+        
         self.model = model.to(self.device)
-        self.model.eval()
+        self.model.eval() # CRITICAL for inference
 
-        # -------------------------------
-        # Load feature scaler
-        # -------------------------------
-        scaler_path = os.path.join(project_root, 'saved_models', 'feature_scaler.pkl')
-        with open(scaler_path, 'rb') as f:
+        # 2. Load Scaler
+        if not self.scaler_path.exists():
+            raise FileNotFoundError(f"Scaler not found at {self.scaler_path}")
+            
+        with open(self.scaler_path, 'rb') as f:
             self.scaler = pickle.load(f)
 
-        # -------------------------------
-        # Image preprocessing
-        # -------------------------------
+        # 3. Define Transform (Must match training!)
         self.transform = transforms.Compose([
             transforms.ToPILImage(),
             transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),
             transforms.ToTensor(),
             transforms.Normalize(
-                mean=[0.485, 0.456, 0.406],
+                mean=[0.485, 0.456, 0.406], 
                 std=[0.229, 0.224, 0.225]
             )
         ])
 
     def extract(self, frame: np.ndarray) -> np.ndarray:
-        """Extract a 2048-dim CNN feature vector from a single frame."""
-
         if frame is None or frame.size == 0:
             return np.zeros(2048)
 
-        if frame.ndim != 3 or frame.shape[2] != 3:
-            return np.zeros(2048)
+        # Preprocessing
+        img_tensor = self.transform(frame).unsqueeze(0).to(self.device)
 
-        # Ensure uint8
-        frame = np.clip(frame, 0, 255).astype(np.uint8)
-
-        # Preprocess
-        img = self.transform(frame).unsqueeze(0).to(self.device)
-
-        # Extract features
+        # Inference
         with torch.no_grad():
-            features = self.model(img)
+            features = self.model(img_tensor)
 
         features = features.cpu().numpy().reshape(1, -1)
 
-        # Normalize with training scaler
+        # Scaling
         features = self.scaler.transform(features)
 
         return features.flatten()

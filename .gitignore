@@ -18,3 +18,5 @@ dataset.zip
 .venv/
 
 data/test_images/
+
+/src/pipeline.ipynb

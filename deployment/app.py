@@ -2,58 +2,95 @@ import cv2
 import time
 import sys
 import os
+import numpy as np
 
-# Add src directory to Python path
+# Add src directory
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from camera.camera import Camera
 from feature_extraction.extractor import FeatureExtractor
 from inference.predictor import Predictor
 
+# ==========================================
+# CONFIGURATION
+# ==========================================
+# Choose your model: 'svm' or 'knn'
+# SELECTED_MODEL = 'svm'
+SELECTED_MODEL = 'knn'
+
+# Set your threshold here (from your Notebook results)
+# SVM Example: 0.60  (Probability)
+# KNN Example: 0.70  (If using probability) or 18.4 (If using distance)
+# REJECTION_THRESHOLD = 0.35
+REJECTION_THRESHOLD = 0.5
+# REJECTION_THRESHOLD = 70.94
+# REJECTION_THRESHOLD = 18.4
+# ==========================================
+
 def main():
+    print("="*40)
+    print("      STARTING DEPLOYMENT SYSTEM      ")
+    print("="*40)
 
-    camera = Camera()
-    extractor = FeatureExtractor()
-    predictor = Predictor()  # model_path is now ignored, but kept for compatibility
-
-    # initialize FPS calculation
-    prev_time = time.perf_counter()
-
-    while True:
-        frame = camera.read()
+    try:
+        camera = Camera(device_index=0)
+        extractor = FeatureExtractor()
         
-        # --- Feature extraction
-        features = extractor.extract(frame)
+        # PASS CONFIGURATION HERE
+        predictor = Predictor(model_type=SELECTED_MODEL, threshold=REJECTION_THRESHOLD)
+        
+    except Exception as e:
+        print(f"Initialization Failed: {e}")
+        return
 
-        # --- Inference
-        classLabel, confidence = predictor.predict(features)
+    # Model Warmup
+    print("[App] Warming up AI models...")
+    dummy_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+    dummy_feats = extractor.extract(dummy_frame)
+    predictor.predict(dummy_feats)
+    print("[App] System Ready!")
 
-        # --- FPS calculation
-        curr_time = time.perf_counter()
-        fps = 1 / (curr_time - prev_time)
-        prev_time = curr_time
+    prev_time = time.perf_counter()
+    fps_avg = 0.0
+    
+    try:
+        while True:
+            frame = camera.read()
+            
+            features = extractor.extract(frame)
+            classLabel, confidence = predictor.predict(features)
 
-        # --- Visualization
-        text = f"Class: {classLabel} | Conf: {confidence:.2f} | FPS: {fps:.1f}"
-        cv2.putText(frame, text,
-                    (10, 30), #position in frame to display text
-                    cv2.FONT_HERSHEY_SIMPLEX, #font style
-                    0.7, # font size
-                    (0, 255, 0), #RGB color
-                    2 #thickness
-                    )
+            # FPS Calculation
+            curr_time = time.perf_counter()
+            time_diff = curr_time - prev_time
+            prev_time = curr_time
+            if time_diff > 0:
+                fps = 1.0 / time_diff
+                fps_avg = 0.9 * fps_avg + 0.1 * fps 
 
-        # open a window and show the frame
-        cv2.imshow("Live Classification", frame)
+            # Visualization
+            color = (0, 255, 0) if classLabel != 'unknown' else (0, 0, 255)
+            
+            # Info Bar
+            cv2.rectangle(frame, (0, 0), (640, 45), (0, 0, 0), -1)
+            
+            # Display Model Used + Prediction
+            status_text = f"[{SELECTED_MODEL.upper()}] Pred: {classLabel.upper()}"
+            conf_text = f"Conf: {confidence:.2f} | FPS: {int(fps_avg)}"
+            
+            cv2.putText(frame, status_text, (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+            cv2.putText(frame, conf_text, (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1)
 
-        # wait for 1 ms and check if ESC key is pressed to exit
-        if cv2.waitKey(1) & 0xFF == 27:  # ESC
-            break
+            cv2.imshow("Material Classifier", frame)
 
-    # release resources
-    camera.release()
-    cv2.destroyAllWindows()
-
+            if cv2.waitKey(1) & 0xFF == 27: # ESC
+                break
+                
+    except KeyboardInterrupt:
+        print("\nStopping...")
+    finally:
+        camera.release()
+        cv2.destroyAllWindows()
 
 if __name__ == "__main__":
     main()
