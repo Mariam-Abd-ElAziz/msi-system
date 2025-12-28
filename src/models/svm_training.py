@@ -32,18 +32,8 @@ import time
 import warnings
 warnings.filterwarnings('ignore')
 
-# ============================================================================
 # CONFIGURATION
-# ============================================================================
-
-# Paths
-PROCESSED_DATA_DIR = 'data/features'
-MODELS_DIR = 'saved_models'
-RESULTS_DIR = 'results'
-
-# Class names
-CLASS_NAMES = ['glass', 'paper', 'cardboard', 'plastic', 'metal', 'trash', 'unknown']
-
+from config import PROCESSED_DATA_DIR, MODELS_DIR, RESULTS_DIR, CLASS_NAMES
 # Create directories
 os.makedirs(MODELS_DIR, exist_ok=True)
 os.makedirs(RESULTS_DIR, exist_ok=True)
