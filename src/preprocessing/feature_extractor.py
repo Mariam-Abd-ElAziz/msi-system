@@ -15,7 +15,7 @@ from PIL import Image
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader
 from torchvision import datasets, transforms, models
 from tqdm import tqdm
 import numpy as np
@@ -23,22 +23,17 @@ from sklearn.preprocessing import StandardScaler
 import pickle
 
 # CONFIGURATION
-
-# Default dataset path . 
-DATASET_PATH = os.environ.get('DATASET_PATH', 'data/augmented')
-MODEL_DIR = 'saved_models'
-MODEL_FILENAME = 'cnn_feature_extractor.pth'
-
+from config import AUGMENTED_DATA_DIR, MODELS_DIR, VAL_DIR, MODEL_DIR, MODEL_FILENAME
 # Training configuration
 IMAGE_SIZE = 128
 BATCH_SIZE = 32
-EPOCHS = 10
-LR = 1e-4
-TRAIN_RATIO = 0.8
+EPOCHS = 20
+LR = 3e-5
+patience = 3
+epochs_without_improvement = 0
 
-CLASS_NAMES = ['cardboard', 'glass', 'metal', 'paper', 'plastic', 'trash', 'unknown']
 
-FEATURES_DIR = os.environ.get('FEATURES_DIR', 'data/features')
+FEATURES_DIR = os.environ.get('FEATURES_DIR', '/content/drive/MyDrive/CNN//features')
 
 # TRANSFORMS & DATASET HELPERS
 
@@ -80,39 +75,19 @@ def prepare_datasets(dataset_path: str):
 
     Returns train_loader, val_loader and number of classes.
     """
-    # Create ImageFolder dataset; ImageFolder uses folder names as class labels
-    full_dataset = datasets.ImageFolder(root=dataset_path, transform=transform, is_valid_file=is_valid_image)
-
-    num_classes = len(full_dataset.classes)
-    print("Classes:", full_dataset.classes)
-    print("Total images:", len(full_dataset))
-
-    # Simple diagnostic for expected class subfolders
-    for cls in CLASS_NAMES:
-        cls_path = os.path.join(dataset_path, cls)
-        if not os.path.exists(cls_path):
-            print(f"Folder missing: {cls_path}")
-        else:
-            try:
-                print(f"{cls} images:", len([f for f in os.listdir(cls_path) if f.lower().endswith(('.png','.jpg','.jpeg','.bmp'))]))
-            except Exception:
-                print(f"Could not list files for: {cls_path}")
-
-    # Split dataset
-    train_size = int(TRAIN_RATIO * len(full_dataset))
-    val_size = len(full_dataset) - train_size
-
-    train_dataset, val_dataset = random_split(
-        full_dataset, [train_size, val_size], generator=torch.Generator().manual_seed(42)
-    )
+    train_dataset = datasets.ImageFolder(root=AUGMENTED_DATA_DIR, transform=transform, is_valid_file=is_valid_image)
+    val_dataset   = datasets.ImageFolder(root=VAL_DIR, transform=transform, is_valid_file=is_valid_image)
+    num_classes = len(train_dataset.classes)
+    print("Classes:", train_dataset.classes)
+    print(f"Training images: {len(train_dataset)}, Validation images: {len(val_dataset)}")
 
     train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=0)
-    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
+    val_loader   = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
 
     return train_loader, val_loader, num_classes
 
 
-def extract_and_cache_features(dataset_path: str = DATASET_PATH, weights_path: str = None, overwrite: bool = False):
+def extract_and_cache_features(dataset_path: str = AUGMENTED_DATA_DIR, weights_path: str = None, overwrite: bool = False):
     """Extract pooled CNN features using ResNet backbone and cache to .npy files.
 
     Saves: X_train.npy, X_val.npy, X_test.npy, y_train.npy, y_val.npy, y_test.npy
@@ -172,13 +147,9 @@ def extract_and_cache_features(dataset_path: str = DATASET_PATH, weights_path: s
     feature_extractor = feature_extractor.to(device)
     feature_extractor.eval()
 
-    # Split dataset
-    total = len(full_dataset)
-    train_size = int(TRAIN_RATIO * total)
-    val_size = total - train_size
-    train_ds, val_ds = random_split(full_dataset, [train_size, val_size], generator=torch.Generator().manual_seed(42))
 
     def _compute(ds):
+
         loader = DataLoader(ds, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
         feats = []
         labels = []
@@ -193,10 +164,11 @@ def extract_and_cache_features(dataset_path: str = DATASET_PATH, weights_path: s
             return np.vstack(feats), np.concatenate(labels)
         return np.zeros((0,0)), np.array([])
 
+    train_ds = datasets.ImageFolder(root=AUGMENTED_DATA_DIR, transform=transform, is_valid_file=is_valid_image)
+    val_ds = datasets.ImageFolder(root=VAL_DIR, transform=transform, is_valid_file=is_valid_image)
     X_train, y_train = _compute(train_ds)
     X_val, y_val = _compute(val_ds)
-    # For completeness create X_test as copy of val (or keep separate procedure later)
-    X_test, y_test = X_val.copy(), y_val.copy()
+
     # Normalize features (fit on training set) and save scaler
     if X_train.size == 0:
         print("No features extracted; skipping save.")
@@ -205,21 +177,18 @@ def extract_and_cache_features(dataset_path: str = DATASET_PATH, weights_path: s
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_val_scaled = scaler.transform(X_val) if X_val.size else X_val
-    X_test_scaled = scaler.transform(X_test) if X_test.size else X_test
 
     # Ensure model dir exists and save scaler
-    os.makedirs(MODEL_DIR, exist_ok=True)
-    scaler_path = os.path.join(MODEL_DIR, 'feature_scaler.pkl')
+    os.makedirs(MODELS_DIR, exist_ok=True)
+    scaler_path = os.path.join(MODELS_DIR, 'feature_scaler.pkl')
     with open(scaler_path, 'wb') as f:
         pickle.dump(scaler, f)
 
     # Save scaled features and labels
     np.save(os.path.join(FEATURES_DIR, 'X_train.npy'), X_train_scaled)
     np.save(os.path.join(FEATURES_DIR, 'X_val.npy'), X_val_scaled)
-    np.save(os.path.join(FEATURES_DIR, 'X_test.npy'), X_test_scaled)
     np.save(os.path.join(FEATURES_DIR, 'y_train.npy'), y_train)
     np.save(os.path.join(FEATURES_DIR, 'y_val.npy'), y_val)
-    np.save(os.path.join(FEATURES_DIR, 'y_test.npy'), y_test)
 
     print(f"Saved scaled features to {FEATURES_DIR}: X_train={X_train_scaled.shape}, X_val={X_val_scaled.shape}")
     print(f"Scaler saved to: {scaler_path}")
@@ -237,10 +206,22 @@ def build_model(num_classes: int, device: torch.device):
     except Exception:
         # Fallback for torchvision versions where 'pretrained' is deprecated
         model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
+    #FREEZE ENTIRE BACKBONE
+    for param in model.parameters():
+        param.requires_grad = False
 
     # Replace classifier head with the number of classes we have
     in_features = model.fc.in_features
-    model.fc = nn.Linear(in_features, num_classes)
+    model.fc = nn.Sequential(
+    nn.Linear(in_features, 512),
+    nn.ReLU(),
+    nn.Dropout(0.5),
+    nn.Linear(512, num_classes)
+    )
+
+    #  Unfreeze classifier head
+    for param in model.fc.parameters():
+        param.requires_grad = True
 
     return model.to(device)
 
@@ -319,12 +300,12 @@ def save_model_state(model, model_dir: str, filename: str):
     print(f"CNN weights saved to: {path}")
 
 
-def main(dataset_path: str = DATASET_PATH):
+def main(dataset_path: str = AUGMENTED_DATA_DIR):
     print("\n" + "=" * 25)
     print("PHASE 2: CNN Feature Extractor")
     print("=" * 25 + "\n")
 
-    train_loader, val_loader, num_classes = prepare_datasets(dataset_path)
+    train_loader, val_loader, num_classes = prepare_datasets(AUGMENTED_DATA_DIR)
 
     if len(train_loader.dataset) == 0 and len(val_loader.dataset) == 0:
         print("No images found. Check DATASET_PATH.")
@@ -336,7 +317,12 @@ def main(dataset_path: str = DATASET_PATH):
     model = build_model(num_classes, device)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=LR)
+    optimizer = optim.Adam(
+    model.parameters(),
+    lr=LR,
+    weight_decay=1e-4
+    )
+
 
     best_val_acc = 0.0
 
@@ -348,13 +334,17 @@ def main(dataset_path: str = DATASET_PATH):
         print(f"Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.4f} | Val Acc: {val_acc:.4f}\n", flush=True)
 
         if val_acc > best_val_acc:
-            best_val_acc = val_acc
-            save_model_state(model, MODEL_DIR, MODEL_FILENAME)
+          best_val_acc = val_acc
+          epochs_without_improvement = 0
+          save_model_state(model, MODELS_DIR, MODEL_FILENAME)
+        else:
+          epochs_without_improvement += 1
+          if epochs_without_improvement >= patience:
+              print(f"No improvement for {patience} epochs. Stopping early.")
+              break
 
     print("\nTraining complete.")
-    extract_and_cache_features(dataset_path=DATASET_PATH, weights_path=os.path.join(MODEL_DIR, MODEL_FILENAME))
+    extract_and_cache_features(dataset_path=AUGMENTED_DATA_DIR, weights_path=os.path.join(MODELS_DIR, MODEL_FILENAME))
 
 
-
-if __name__ == "__main__":
-    main()
+main()
