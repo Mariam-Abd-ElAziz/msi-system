@@ -118,7 +118,7 @@ def extract_and_cache_features(dataset_path: str = AUGMENTED_DATA_DIR, weights_p
 
     # Try to load provided weights or default saved model
     if weights_path is None:
-        weights_path = os.path.join(MODEL_DIR, MODEL_FILENAME)
+        weights_path = os.path.join(MODELS_DIR, MODEL_FILENAME)
 
     if weights_path and os.path.exists(weights_path):
         try:

@@ -7,6 +7,6 @@ TRAIN_DIR='data/split/train'
 VAL_DIR='data/split/val'
 RESULTS_DIR = 'results'
 MODEL_FILENAME = 'cnn_feature_extractor.pth'
-
+TEST_DIR = 'data/test'
 CLASS_NAMES = ['cardboard', 'glass', 'metal', 'paper', 'plastic', 'trash','unknown']
 TARGET_IMAGES_PER_CLASS = 500  
